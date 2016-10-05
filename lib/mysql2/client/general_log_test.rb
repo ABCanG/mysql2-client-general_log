@@ -60,6 +60,12 @@ SQL
     if ret != expect
       t.error("expect query output not change from #{expect} got #{ret}")
     end
+    unless @client.general_log.first.format =~ /^SQL\t\(\d+\.\d+ms\)\tSELECT \* FROM users WHERE name = 'ksss'$/
+      t.error("expect log format not correct got `#{@client.general_log.first.format}`")
+    end
+    unless @client.general_log.first.format(true) =~ /^SQL\t\(\d+\.\d+ms\)\tSELECT \* FROM users WHERE name = 'ksss'.+in `test_values'$/
+      t.error("expect log format not correct got `#{@client.general_log.first.format(true)}`")
+    end
   end
 
   def test_log_class(t)

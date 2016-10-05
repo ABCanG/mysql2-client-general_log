@@ -39,9 +39,7 @@ get '/' do
 end
 
 after do
-  puts db.general_log.map(&:sql)
-  puts "path:#{request.path}\tsql:#{db.general_log.length}"
-  db.general_log.clear
+  db.general_log.writefile(req: request, backtrace: true)
 end
 ```
 
