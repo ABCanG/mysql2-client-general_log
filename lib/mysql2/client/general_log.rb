@@ -1,17 +1,18 @@
-require "mysql2"
+require 'mysql2'
 require 'benchmark'
 
 module Mysql2
   class Client
     module GeneralLog
-      require "mysql2/client/general_log/version"
+      require 'mysql2/client/general_log/version'
 
-      class Log < Struct.new(:sql, :backtrace, :time)
+      class Log < Struct.new(:sql, :args, :backtrace, :time)
         def format(use_bt = false)
           ret = [
             'SQL',
             '(%07.2fms)' % (time * 1000),
-            sql.gsub(/[\r\n]/, ' ').gsub(/ +/, ' ').strip
+            sql.gsub(/[\r\n]/, ' ').gsub(/ +/, ' ').strip,
+            args.to_s
           ]
           ret << backtrace[(backtrace[0].to_s.include?("in `xquery'") ? 1 : 0)] if use_bt
 
@@ -26,9 +27,14 @@ module Mysql2
               file.puts "REQUEST\t#{req.request_method}\t#{req.path}\t#{self.length}"
             end
 
-            file.puts self.map { |log| log.format(backtrace) }.join("\n") + "\n"
+            file.puts self.map { |log| log.format(backtrace) }.join("\n")
+            file.puts ''
           end
           self.clear
+        end
+
+        def push(sql, args, backtrace, time)
+          super(Log.new(sql, args, backtrace, time))
         end
       end
 
@@ -40,12 +46,37 @@ module Mysql2
       end
 
       # dependent on Mysql2::Client#query
-      def query(sql, options={})
+      def query(sql, options = {})
         ret = nil
         time = Benchmark.realtime do
           ret = super
         end
-        @general_log << Log.new(sql, caller_locations, time)
+        @general_log.push(sql, [], caller_locations, time)
+        ret
+      end
+
+      def prepare(sql)
+        super.tap do |ret|
+          ret.cli = self
+          ret.sql = sql
+        end
+      end
+    end
+
+    prepend GeneralLog
+  end
+
+  class Statement
+    module GeneralLog
+      attr_accessor :cli
+      attr_accessor :sql
+
+      def execute(*args)
+        ret = nil
+        time = Benchmark.realtime do
+          ret = super
+        end
+        @cli.general_log.push(@sql, args, caller_locations, time)
         ret
       end
     end

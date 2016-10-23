@@ -18,6 +18,7 @@ p client.general_log #=>
 # [
 #   #<struct Mysql2::Client::GeneralLog::Log
 #     sql="SELECT * FROM users LIMIT 1",
+#     args=[],
 #     backtrace=["script.rb:6:in `<main>'"],
 #     time=0.0909838349907659>
 # ]
@@ -27,7 +28,12 @@ p client.general_log #=>
 
 ### sinatra
 
+test.rb:
 ```ruby
+require 'sinatra'
+require 'mysql2'
+require "mysql2/client/general_log"
+
 helpers do
   def db
     Thread.current[:db] ||= Mysql2::Client.new(config)
@@ -35,12 +41,23 @@ helpers do
 end
 
 get '/' do
-  # ...
+  db.query("SELECT * FROM users WHERE name = '#{"ksss"}'")
+  stmt = db.prepare('SELECT * FROM users WHERE name = ?')
+  stmt.execute('barr')
+  stmt.execute('foo')
 end
 
 after do
-  db.general_log.writefile(req: request, backtrace: true)
+  db.general_log.writefile(path: '/tmp/sql.log', req: request, backtrace: true)
 end
+```
+
+/tmp/sql.log:
+```
+REQUEST GET	/	3
+SQL	(0000.89ms)	SELECT * FROM users WHERE name = 'ksss'	[]	/path/to/test.rb:12:in `block in <main>'
+SQL	(0000.66ms)	SELECT * FROM users WHERE name = ?	["barr"]	/path/to/test.rb:14:in `block in <main>'
+SQL	(0000.65ms)	SELECT * FROM users WHERE name = ?	["foo"]	/path/to/test.rb:15:in `block in <main>'
 ```
 
 ## Installation
@@ -48,16 +65,12 @@ end
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'mysql2-client-general_log'
+gem 'mysql2-client-general_log', github: 'ABCanG/mysql2-client-general_log', branch: 'writefile'
 ```
 
 And then execute:
 
     $ bundle
-
-Or install it yourself as:
-
-    $ gem install mysql2-client-general_log
 
 ## Contributing
 

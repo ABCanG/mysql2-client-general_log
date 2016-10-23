@@ -60,17 +60,42 @@ SQL
     if ret != expect
       t.error("expect query output not change from #{expect} got #{ret}")
     end
-    unless @client.general_log.first.format =~ /^SQL\t\(\d+\.\d+ms\)\tSELECT \* FROM users WHERE name = 'ksss'$/
+    unless @client.general_log.first.format =~ /^SQL\t\(\d+\.\d+ms\)\tSELECT \* FROM users WHERE name = 'ksss'\t\[\]$/
       t.error("expect log format not correct got `#{@client.general_log.first.format}`")
     end
-    unless @client.general_log.first.format(true) =~ /^SQL\t\(\d+\.\d+ms\)\tSELECT \* FROM users WHERE name = 'ksss'.+in `test_values'$/
+    unless @client.general_log.first.format(true) =~ /^SQL\t\(\d+\.\d+ms\)\tSELECT \* FROM users WHERE name = 'ksss'\t\[\].+in `test_values'$/
+      t.error("expect log format not correct got `#{@client.general_log.first.format(true)}`")
+    end
+  end
+
+  def test_prepare_values(t)
+    db_init
+    stmt = @client.prepare('SELECT * FROM users WHERE name = ?')
+    ret = stmt.execute(e('ksss')).first
+    stmt.execute(e('barr'))
+    stmt.execute(e('foo'))
+
+    if @client.general_log.length != 3
+      t.error("expect log length 3 got #{@client.general_log.length}")
+    end
+    if @client.general_log.any?{|log| !log.kind_of?(Mysql2::Client::GeneralLog::Log)}
+      t.error("expect all collection item is instance of Mysql2::Client::GeneralLog::Log got #{@client.general_log.map(&:class).uniq}")
+    end
+    expect = {"id"=>1, "name"=>"ksss", "password"=>"cheap-pass"}
+    if ret != expect
+      t.error("expect query output not change from #{expect} got #{ret}")
+    end
+    unless @client.general_log.first.format =~ /^SQL\t\(\d+\.\d+ms\)\tSELECT \* FROM users WHERE name = \?\t\["ksss"\]$/
+      t.error("expect log format not correct got `#{@client.general_log.first.format}`")
+    end
+    unless @client.general_log.first.format(true) =~ /^SQL\t\(\d+\.\d+ms\)\tSELECT \* FROM users WHERE name = \?\t\["ksss"\].+in `test_prepare_values'$/
       t.error("expect log format not correct got `#{@client.general_log.first.format(true)}`")
     end
   end
 
   def test_log_class(t)
-    if Mysql2::Client::GeneralLog::Log.members != [:sql, :backtrace, :time]
-      t.error("expect Mysql2::Client::GeneralLog::Log.members is [:sql, :backtrace, :time] got #{Mysql2::Client::GeneralLog::Log.members}")
+    if Mysql2::Client::GeneralLog::Log.members != [:sql, :args, :backtrace, :time]
+      t.error("expect Mysql2::Client::GeneralLog::Log.members is [:sql, :args, :backtrace, :time] got #{Mysql2::Client::GeneralLog::Log.members}")
     end
   end
 
