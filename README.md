@@ -11,10 +11,12 @@ Stock all general logs.
 
 require "mysql2/client/general_log"
 
+Mysql2::Client::GeneralLog.prepend_module
+
 client = Mysql2::Client.new(config)
 client.query("SELECT * FROM users LIMIT 1")
 
-p client.general_log #=>
+p Mysql2::Client::GeneralLog.general_log #=>
 # [
 #   #<struct Mysql2::Client::GeneralLog::Log
 #     sql="SELECT * FROM users LIMIT 1",
@@ -27,6 +29,16 @@ p client.general_log #=>
 ## Examples
 
 ### sinatra
+
+config.ru:
+```ruby
+require_relative './test'
+
+require 'mysql2/client/general_log'
+
+use Mysql2::Client::GeneralLog::Middleware, enabled: true, backtrace: true, path: '/tmp/general_log'
+run Sinatra::Application
+```
 
 test.rb:
 ```ruby
@@ -46,13 +58,9 @@ get '/' do
   stmt.execute('barr')
   stmt.execute('foo')
 end
-
-after do
-  db.general_log.writefile(path: '/tmp/sql.log', req: request, backtrace: true)
-end
 ```
 
-/tmp/sql.log:
+/tmp/general_log/2017-11-19.log:
 ```
 REQUEST GET	/	3
 SQL	(0000.89ms)	SELECT * FROM users WHERE name = 'ksss'	[]	/path/to/test.rb:12:in `block in <main>'
@@ -65,12 +73,25 @@ SQL	(0000.65ms)	SELECT * FROM users WHERE name = ?	["foo"]	/path/to/test.rb:15:i
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'mysql2-client-general_log', github: 'ABCanG/mysql2-client-general_log', branch: 'writefile'
+gem 'mysql2-client-general_log', github: 'abcang/mysql2-client-general_log', branch: 'rack_middleware'
 ```
 
 And then execute:
 
     $ bundle
+
+
+## Test
+
+```ruby
+$ bundle exec rake
+```
+
+## Example server
+
+```ruby
+$ bundle exec rake example
+```
 
 ## Contributing
 

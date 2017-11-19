@@ -1,86 +1,35 @@
 require 'mysql2'
 require 'benchmark'
 
+require 'mysql2/client/general_log/client_ext'
+require 'mysql2/client/general_log/log'
+require 'mysql2/client/general_log/logger'
+require 'mysql2/client/general_log/middleware'
+require 'mysql2/client/general_log/statement_ext'
+require 'mysql2/client/general_log/version'
+
 module Mysql2
   class Client
     module GeneralLog
-      require 'mysql2/client/general_log/version'
-
-      class Log < Struct.new(:sql, :args, :backtrace, :time)
-        def format(use_bt = false)
-          ret = [
-            'SQL',
-            '(%07.2fms)' % (time * 1000),
-            sql.gsub(/[\r\n]/, ' ').gsub(/ +/, ' ').strip,
-            args.to_s
-          ]
-          ret << backtrace[(backtrace[0].to_s.include?("in `xquery'") ? 1 : 0)] if use_bt
-
-          ret.join("\t")
-        end
-      end
-
-      class Logger < Array
-        def writefile(path: '/tmp/sql.log', req: nil, backtrace: false)
-          File.open(path, 'a') do |file|
-            if req
-              file.puts "REQUEST\t#{req.request_method}\t#{req.path}\t#{self.length}"
-            end
-
-            file.puts self.map { |log| log.format(backtrace) }.join("\n")
-            file.puts ''
-          end
-          self.clear
+      class << self
+        def general_log
+          Thread.current[:general_log] ||= {}
+          Thread.current[:general_log][Thread.current[:request_id]] ||= Logger.new
         end
 
-        def push(sql, args, backtrace, time)
-          super(Log.new(sql, args, backtrace, time))
+        def general_log_with_request_id(request_id)
+          Thread.current[:general_log]&.fetch(request_id, nil)
         end
-      end
 
-      attr_accessor :general_log
-
-      def initialize(opts = {})
-        @general_log = Logger.new
-        super
-      end
-
-      # dependent on Mysql2::Client#query
-      def query(sql, options = {})
-        ret = nil
-        time = Benchmark.realtime do
-          ret = super
+        def delete_general_log(request_id)
+          Thread.current[:general_log]&.delete(request_id)
         end
-        @general_log.push(sql, [], caller_locations, time)
-        ret
-      end
 
-      def prepare(sql)
-        super.tap do |ret|
-          ret.cli = self
-          ret.sql = sql
+        def prepend_module
+          Mysql2::Client.send(:prepend, ClientExt)
+          Mysql2::Statement.send(:prepend, StatementExt)
         end
       end
     end
-
-    prepend GeneralLog
-  end
-
-  class Statement
-    module GeneralLog
-      attr_accessor :cli
-      attr_accessor :sql
-
-      def execute(*args)
-        ret = nil
-        time = Benchmark.realtime do
-          ret = super
-        end
-        @cli.general_log.push(@sql, args, caller_locations, time)
-        ret
-      end
-    end
-
-    prepend GeneralLog
   end
 end

@@ -1,7 +1,11 @@
-require "bundler/gem_tasks"
+require 'bundler/gem_tasks'
 
 task :test do
-  sh "rgot -v #{Dir.glob("lib/**/*_test.rb").join(' ')}"
+  sh "rgot -v #{Dir.glob('lib/**/*_test.rb').join(' ')}"
 end
 
-task :default => [:test]
+task :example do
+  sh 'rackup example/config.ru'
+end
+
+task default: [:test]

@@ -1,20 +1,19 @@
 require 'sinatra'
 require 'mysql2'
-require "mysql2/client/general_log"
-
+require 'mysql2/client/general_log'
 
 helpers do
   def db
     Thread.current[:db] ||= Mysql2::Client.new(
-      host: "127.0.0.1",
-      username: "root",
+      host: '127.0.0.1',
+      username: 'root'
     )
   end
 
   def init
-    db.query("DROP DATABASE IF EXISTS `mysql2_client_general_log_test`")
-    db.query("CREATE DATABASE `mysql2_client_general_log_test`")
-    db.query("USE `mysql2_client_general_log_test`")
+    db.query('DROP DATABASE IF EXISTS `mysql2_client_general_log_test`')
+    db.query('CREATE DATABASE `mysql2_client_general_log_test`')
+    db.query('USE `mysql2_client_general_log_test`')
     db.query(<<-SQL)
     CREATE TABLE users (
       `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -33,17 +32,23 @@ helpers do
 end
 
 get '/' do
-  db.query("USE `mysql2_client_general_log_test`")
-  db.query("SELECT * FROM users WHERE name = '#{"ksss"}'")
+  db.query('USE `mysql2_client_general_log_test`')
+  db.query("SELECT * FROM users WHERE name = 'ksss'")
   stmt = db.prepare('SELECT * FROM users WHERE name = ?')
   stmt.execute('barr')
   stmt.execute('foo')
+
+  'ok'
 end
 
 get '/init' do
   init
+
+  'init'
 end
 
-after do
-  db.general_log.writefile(req: request, backtrace: true)
+get '/down' do
+  db.query('DROP DATABASE IF EXISTS `mysql2_client_general_log_test`')
+
+  'down'
 end
