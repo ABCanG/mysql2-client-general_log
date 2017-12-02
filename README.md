@@ -44,7 +44,6 @@ test.rb:
 ```ruby
 require 'sinatra'
 require 'mysql2'
-require "mysql2/client/general_log"
 
 helpers do
   def db
