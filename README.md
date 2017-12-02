@@ -59,12 +59,12 @@ get '/' do
 end
 ```
 
-/tmp/general_log/2017-11-19.log:
+/tmp/general_log/2017-11-19.txt:
 ```
 REQUEST GET	/	3
-SQL	(0000.89ms)	SELECT * FROM users WHERE name = 'ksss'	[]	/path/to/test.rb:12:in `block in <main>'
-SQL	(0000.66ms)	SELECT * FROM users WHERE name = ?	["barr"]	/path/to/test.rb:14:in `block in <main>'
-SQL	(0000.65ms)	SELECT * FROM users WHERE name = ?	["foo"]	/path/to/test.rb:15:in `block in <main>'
+SQL	(0000.89ms)	SELECT * FROM users WHERE name = 'ksss'	[]	/path/to/test.rb:11:in `block in <main>'
+SQL	(0000.66ms)	SELECT * FROM users WHERE name = ?	["barr"]	/path/to/test.rb:13:in `block in <main>'
+SQL	(0000.65ms)	SELECT * FROM users WHERE name = ?	["foo"]	/path/to/test.rb:14:in `block in <main>'
 ```
 
 ## Installation
